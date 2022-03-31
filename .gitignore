@@ -1,2 +1,11 @@
 .git/
 
+src/__pycache__/processing.cpython-310.pyc
+src/testing.py
+.gitignore
+samples/output.wav
+src/output.wav
+src/edit.wav
+samples/edit.wav
+.gitignore
+
