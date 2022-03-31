@@ -4,53 +4,70 @@ import numpy as np
 from scipy.io.wavfile import write
 # Removed scipy, unnecessary import--librosa can write .wav files itself.
 
-minOnsetInterval = 1
+
+class audioProcessingClass:
+    def __init__(self, audioData, samplingRate):
+        # Minimum time between onset detections, in seconds
+        self.minOnsetInterval = 0.5
+        # If None, will use sampling rate of given wav. Otherwise, will use specified sampling rate as integer
+        self.forceSamplingRate = None  
+
+        self.audioData = audioData
+        self.sr = samplingRate if self.ForceSamplingRate == None else int(self.forceSamplingRate)
+
+    def isolateBackground(self, audioData):
+        # taken from https://librosa.org/doc/latest/auto_examples/plot_vocal_separation.html?highlight=background
+        # solely for cutting out vocals
+        sliceFull, phase = librosa.magphase(librosa.stft(audioData))
+        sliceFilter = librosa.decompose.nn_filter(sliceFull, aggregate=np.median, metric='cosine', width=int(librosa.time_to_frames(2, sr=self.sr)))
+        sliceFilter = np.minimum(sliceFull, sliceFilter)
+
+        margin_i, margin_v = 2, 10
+        power = 2
+
+        mask_i = librosa.util.softmask(sliceFilter, margin_i * (sliceFull - sliceFilter), power=power)
+
+        sBackground = mask_i * sliceFull
+        
+        return librosa.istft(sBackground * phase)
+
+    def overlayIntervalFilter(self, overlayData):
+        overlayDataFiltered = []
+        # Ensure that interval between detected onset matches variable set in minOnsetInterval in secs
+        i = 0
+        overlayDataFiltered.append(overlayData[0])
+        while i < (len(overlayData) - 1):
+            x = i + 1
+            while i != x and x < len(overlayData):
+                i = x if (overlayData[x] - overlayData[i]) >= float(self.minOnsetInterval) else i
+                x = x + 1 if i !=x else x
+                if i == x:
+                    overlayDataFiltered.append(overlayData[x])
+
+        return np.array(overlayDataFiltered) 
 
 
-def convertToArrays(audioFile):
+
+        
+
+
+
+
+def processAudio(audio):
 
     # Load audio file and apply built-in librosa 'percussive' frequency EQ
-    originalAudioData, samplingRate = librosa.core.load(audioFile)
-    filteredArr = librosa.effects.percussive(y=originalAudioData)
+    originalAudioData, samplingRate = librosa.core.load(audio)
+    filteredArr = librosa.effects.percussive(y=audio)
+
+    # init class
+    apc = audioProcessingClass()
 
     filteredOverlay = overlayFilter(librosa.onset.onset_detect(y = filteredArr, sr=samplingRate, units='time').tolist())
+
+    write(outputFile, samplingRate, audioData + librosa.clicks(times=overlayData,sr=samplingRate, length=len(audioData)))
  
     return filteredArr, filteredOverlay, samplingRate
-
-
-def toWavOutput(outputFile, samplingRate, audioData, overlayData):
-    write(outputFile, samplingRate, audioData + librosa.clicks(times=overlayData, sr=samplingRate, length=len(audioData)))
-
-
-def overlayFilter(overlayData):
-    overlayDataFiltered = []
     
-    # Ensure that interval between detected onset matches variable set in minOnsetInterval in secs
-    i = 0
-    while i < (len(overlayData) - 1):
-        x = i + 1
-        while i != x and x < len(overlayData):
-            i = x if (overlayData[x] - overlayData[i]) >= float(minOnsetInterval) else i
-            if i != x:
-                x += 1
-            else:
-                overlayDataFiltered.append(overlayData[x])
-
-    return np.array(overlayDataFiltered) 
-
-
-
-
-    
-    # x = numpy.asarray([.06, .27, .44, .62, 1.2, 5.5, 9.3])
-    # desired output: [.06, 1.2, 5.5, 9.3]
-    # ind = numpy.indices([7])
-    # numpy.where(x[ind - 1] - x[ind - 2] >= 1, x, 0)[ind] == 0
-    # aa = numpy.where((x[ind] - x[ind - 1] >= 1) and (x[ind], x, 0)
-    # if the one before me has a timestamp distance that is less than 1, then set to 0
-    # numpy.where((overlayData[ind1] - overlayData[ind1 - 1] < 1) & (overlayData[ind1 - 1] - overlayData[ind1 - 2] >= 1), 0, overlayData)
-    # output: [0, 0, 0, 0, 0, 5.5, 9.3]
-    print(overlayDataFiltered)
 
 
 
