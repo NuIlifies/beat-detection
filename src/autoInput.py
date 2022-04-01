@@ -1,9 +1,9 @@
 from processing import processAudio
 
 try:
-    aD, oA, sr = processAudio('edit.wav')
+    a = processAudio("edit.wav", "output.wav")
 
-    y = toWavOutput("output.wav", sr, aD, oA)
+    a.writeToFile()
 
     print("Successfully filtered and output to ./output.wav")
     
