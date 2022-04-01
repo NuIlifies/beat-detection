@@ -1,7 +1,7 @@
-from processing import convertToArrays, toWavOutput
+from processing import processAudio
 
 try:
-    aD, oA, sr = convertToArrays('edit.wav')
+    aD, oA, sr = processAudio('edit.wav')
 
     y = toWavOutput("output.wav", sr, aD, oA)
 
