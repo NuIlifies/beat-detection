@@ -10,19 +10,19 @@ class processAudio:
         self.minOnsetInterval = 0.5
         # If None, will use sampling rate of given wav. Otherwise, will use specified sampling rate as integer
         self.forceSamplingRate = None  
-        self.outputFileName = outputFileNAme
+        # If True, will attempt to remove vocals from given audio
+        self.applyBackgroundIsolation = True
 
+        self.outputFileName = outputFileNAme
         self.audioData, tempsr = lr.core.load(inputFileName)
         self.sr = tempsr if self.forceSamplingRate == None else int(self.forceSamplingRate)
 
-
         self.filteredOverlayData = self._overlayIntervalFilter(lr.onset.onset_detect(
-            y = self.audioData, 
+            y = self.audioData if self.applyBackgroundIsolation == False else self._isolateBackground(self.audioData), 
             sr=self.sr, 
             units='time'
             )).tolist()
 
-    """
 
     def _isolateBackground(self):
         # taken from https://librosa.org/doc/latest/auto_examples/plot_vocal_separation.html?highlight=background
@@ -37,14 +37,12 @@ class processAudio:
         sBackground = mask_i * sliceFull
         
         return lr.istft(sBackground * phase)
-    """
-
+    
 
     def _overlayIntervalFilter(self, detectedOnset):
         # Note: detectedOnset is librosa.onset.onset_detect output as a list, WITHOUT time interval filter.
-
         diff = np.insert(np.diff(detectedOnset),0,np.inf)
-        
+    
         for i in range(len(diff) - 1):
             if diff[i] < self.minOnsetInterval:
                 diff[i + 1] += diff[i]
